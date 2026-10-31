@@ -1,0 +1,117 @@
+<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>PESCADOS</title><link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#0077B6"><link rel="icon" href="icon-192.png"><link rel="apple-touch-icon" href="icon-192.png">
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+body{margin:0;font-family:system-ui,sans-serif;background:linear-gradient(180deg,#90E0EF,#CAF0F8);min-height:100vh;color:#023047;padding-bottom:84px}
+header{background:linear-gradient(135deg,#0077B6,#00B4D8);color:#fff;text-align:center;font-size:1.6rem;font-weight:900;padding:14px;padding-top:max(14px,env(safe-area-inset-top))}
+main{padding:12px;max-width:640px;margin:auto}
+.card{background:#fff;border-radius:16px;padding:12px;margin-bottom:12px;box-shadow:0 3px 10px #0002}
+h2{margin:0 0 8px;font-size:1.1rem}
+input,select{width:100%;padding:11px;margin:4px 0;border:2px solid #90E0EF;border-radius:10px;font-size:1rem;background:#fff;color:#023047}
+button{width:100%;padding:12px;margin:4px 0;border:0;border-radius:12px;background:#0077B6;color:#fff;font-weight:800;font-size:1rem}
+button.ok,.btn2{background:#2A9D8F}button.x{width:auto;background:#E63946;padding:6px 12px;margin:0}
+.btnl{background:#0077B6;color:#fff;padding:8px 14px;border-radius:10px;font-weight:800}
+.fila{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #eee}
+.tot{font-size:1.7rem;font-weight:900;text-align:center;margin:8px 0}
+.pagar{background:linear-gradient(135deg,#FFB703,#FB8500);color:#fff;text-align:center;border-radius:18px;padding:16px;margin-bottom:12px;font-weight:900}.pagar b{display:block;font-size:2.6rem}.pagar button{background:#023047}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:#023047;padding-bottom:env(safe-area-inset-bottom)}nav button{background:0;border-radius:0;margin:0;font-size:.7rem;padding:8px 2px;color:#90E0EF}nav button.on{color:#FFB703}nav span{display:block;font-size:1.3rem}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:6px}.g2 label{font-size:.75rem;font-weight:700}
+.ph{height:120px;border-radius:12px;background:#CAF0F8;display:flex;align-items:center;justify-content:center;font-size:3rem;overflow:hidden}.ph img{width:100%;height:100%;object-fit:cover}
+.vac{text-align:center;opacity:.7}.err{color:#E63946;font-weight:700;text-align:center}
+#imp{display:none}
+.pag{position:relative;overflow:hidden;width:210mm;height:297mm;page-break-after:always;display:flex;flex-direction:column;align-items:center;justify-content:space-evenly;background:radial-gradient(circle at 15% 20%,#fff8 0 12mm,#0000 13mm),radial-gradient(circle at 85% 75%,#fff8 0 18mm,#0000 19mm),radial-gradient(circle at 80% 15%,#fff6 0 8mm,#0000 9mm),linear-gradient(180deg,#90E0EF,#CAF0F8 45%,#48CAE4)}
+.pag h1{margin:0;font-size:22mm;text-align:center;color:#023047;text-shadow:0 1mm 0 #fff;padding:0 10mm;z-index:1}
+.pag .foto{z-index:1;width:170mm;height:125mm;border-radius:10mm;border:2mm solid #fff;background:#fff8;display:flex;align-items:center;justify-content:center;font-size:80mm;overflow:hidden}.pag .foto img{width:100%;height:100%;object-fit:contain}
+.pag .cartel{z-index:1;transform:rotate(-3deg);background:linear-gradient(135deg,#FFB703,#FB8500);border:2.5mm solid #fff;border-radius:14mm;padding:5mm 16mm;text-align:center;color:#fff;box-shadow:0 3mm 0 #023047}.cartel small{display:block;font-size:8mm;font-weight:800}.cartel b{display:block;font-size:34mm;line-height:1;text-shadow:0 1.5mm 0 #023047}.cartel span{font-size:9mm;font-weight:800}
+.pag i{position:absolute;font-style:normal;font-size:60mm;opacity:.18}.w1{top:-5mm;left:-8mm;transform:rotate(-20deg)}.w2{bottom:-5mm;right:-8mm;transform:rotate(15deg)}
+@media print{@page{size:A4;margin:0}body{background:none;padding:0}#app{display:none}#imp{display:block}}
+</style></head><body><div id="app"></div><div id="imp"></div>
+<script type="module">
+import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import{getAuth,onAuthStateChanged,signInWithEmailAndPassword,signOut}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import{initializeFirestore,persistentLocalCache,persistentMultipleTabManager,collection,doc,setDoc,deleteDoc,onSnapshot,writeBatch}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+// ===== PEGAR ACÁ LA CONFIGURACIÓN DE FIREBASE =====
+const FIREBASE={apiKey:"PEGAR",authDomain:"PEGAR",projectId:"PEGAR",storageBucket:"PEGAR",messagingSenderId:"PEGAR",appId:"PEGAR"};
+// ==================================================
+const fb=initializeApp(FIREBASE),auth=getAuth(fb),db=initializeFirestore(fb,{localCache:persistentLocalCache({tabManager:persistentMultipleTabManager()})});
+const $=id=>document.getElementById(id),A=window.A={};
+const C=['productos','lotes','ventas','pagos'],S={productos:[],lotes:[],ventas:[],pagos:[],cfg:{margen:35,gastos:5}};
+let user=null,view='v',cart=[],unsub=[],sel=new Set(),msg='';
+const f$=n=>(n||0).toLocaleString('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:0});
+const d=t=>new Date(t).toLocaleDateString('es-AR'),uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const prod=id=>S.productos.find(p=>p.id==id),put=(c,o)=>{setDoc(doc(db,c,o.id),o)},del=(c,id)=>{deleteDoc(doc(db,c,id))};
+const kgDisp=id=>S.lotes.filter(l=>l.pid==id&&l.estado=='activo').reduce((a,l)=>a+l.kgRest,0);
+const sum=(a,f)=>a.reduce((x,y)=>x+f(y),0);
+
+onAuthStateChanged(auth,u=>{user=u;unsub.forEach(f=>f());unsub=[];
+ if(u){C.forEach(c=>unsub.push(onSnapshot(collection(db,c),s=>{S[c]=s.docs.map(x=>x.data());render()},()=>{})));
+ unsub.push(onSnapshot(doc(db,'ajustes','cfg'),s=>{if(s.exists())S.cfg=s.data();render()},()=>{}))}
+ render(true)});
+
+const NAV=[['v','🛒','Vender'],['s','📦','Stock'],['p','🏷️','Precios'],['g','💰','Pagar'],['a','⚙️','Ajustes']];
+function render(force){
+ const ae=document.activeElement;if(!force&&ae&&/INPUT|SELECT|TEXTAREA/.test(ae.tagName)&&$('app').contains(ae))return;
+ if(!user){$('app').innerHTML=`<header>🐟 PESCADOS 🐟</header><main><div class=card><h2>Ingresar</h2><input id=em type=email placeholder="Correo"><input id=pw type=password placeholder="Contraseña"><button onclick="A.login()">Entrar</button><p class=err>${msg}</p></div></main>`;return}
+ $('app').innerHTML=`<header>🐟 PESCADOS 🐟</header><main>${VW[view]()}</main><nav>${NAV.map(n=>`<button class="${view==n[0]?'on':''}" onclick="A.go('${n[0]}')"><span>${n[1]}</span>${n[2]}</button>`).join('')}</nav>`}
+A.go=v=>{view=v;render(true);scrollTo(0,0)};
+A.login=()=>{msg='';signInWithEmailAndPassword(auth,$('em').value.trim(),$('pw').value).catch(()=>{msg='Correo o contraseña incorrectos';render(true)})};
+
+const VW={
+v:()=>{const ps=S.productos.filter(p=>p.precio>0&&kgDisp(p.id)>0.001),tot=sum(cart,i=>i.kg*prod(i.pid).precio);
+ return `<div class=card><h2>🛒 Carrito</h2>${ps.length?`<select id=cp>${ps.map(p=>`<option value="${p.id}">${esc(p.nombre)} · ${f$(p.precio)}/kg · ${kgDisp(p.id).toFixed(2)} kg</option>`).join('')}</select><input id=ck type=number step=0.01 inputmode=decimal placeholder="Kg a vender"><button onclick="A.add()">Agregar al carrito</button>`:'<p class=vac>Cargá stock y precios para poder vender.</p>'}
+ ${cart.map((i,n)=>`<div class=fila><span>${esc(prod(i.pid).nombre)} · ${i.kg} kg</span><b>${f$(i.kg*prod(i.pid).precio)}</b><button class=x onclick="A.quit(${n})">✕</button></div>`).join('')}
+ ${cart.length?`<div class=tot>Total ${f$(tot)}</div><button class=ok onclick="A.vender()">✅ Confirmar venta</button>`:''}</div>`},
+s:()=>`<div class=card><h2>📦 Cargar compra</h2>${S.productos.length?`<select id=sp>${S.productos.map(p=>`<option value="${p.id}">${esc(p.nombre)}</option>`).join('')}</select><input id=sk type=number step=0.01 inputmode=decimal placeholder="Kg comprados"><input id=sc type=number inputmode=decimal placeholder="Costo total pagado ($)"><button onclick="A.compra()">Agregar al stock</button>`:'<p class=vac>Primero creá productos en 🏷️ Precios.</p>'}</div>
+ <div class=card><h2>🎣 En stock</h2>${S.lotes.filter(l=>l.estado=='activo').map(l=>`<div class=fila><span><b>${esc(l.n)}</b><br>${l.kgRest.toFixed(2)} / ${l.kg} kg · limpia ${f$(l.limpia)}</span><span>${l.kgRest==l.kg?`<button class=x onclick="A.delLote('${l.id}')">✕</button>`:''}<button class=ok style="width:auto;padding:8px" onclick="A.agot('${l.id}')">Se acabó</button></span></div>`).join('')||'<p class=vac>Sin stock cargado.</p>'}</div>`,
+p:()=>`<div class=card><h2>➕ Nuevo producto</h2><input id=np placeholder="Ej: Merluza"><button onclick="A.nuevo()">Agregar</button><button class=ok onclick="A.lista()">🖨️ Lista de precios (productos tildados)</button></div>`+S.productos.map(p=>`<div class=card><div class=ph>${p.img?`<img src="${p.img}">`:'🐟'}</div><div class=fila><label><input type=checkbox style="width:22px;height:22px" ${sel.has(p.id)?'checked':''} onchange="A.tog('${p.id}')"> En lista</label><label class=btnl>📷 Imagen<input type=file accept="image/*" hidden onchange="A.img('${p.id}',event)"></label><button class=x onclick="A.delp('${p.id}')">✕</button></div>
+ <input value="${esc(p.nombre)}" onchange="A.ed('${p.id}','nombre',this.value)"><div class=g2><label>Costo/kg ($)<input type=number inputmode=decimal value="${p.costoKg?Math.round(p.costoKg*100)/100:''}" onchange="A.ed('${p.id}','costoKg',this.value)"></label><label>Margen (%)<input type=number inputmode=decimal value="${p.margen}" onchange="A.ed('${p.id}','margen',this.value)"></label><label>Gastos varios (%)<input type=number inputmode=decimal value="${p.gastos}" onchange="A.ed('${p.id}','gastos',this.value)"></label><label>Precio venta/kg ($)<input type=number inputmode=decimal value="${p.precio||''}" onchange="A.ed('${p.id}','precio',this.value)"></label></div></div>`).join(''),
+g:()=>{const ls=S.lotes.filter(l=>l.estado=='agotado'&&!l.pagado),m=sum(ls,l=>l.limpia),enc=sum(S.lotes.filter(l=>l.estado=='activo'),l=>l.limpia||0),gv=sum(S.ventas,v=>v.gastos||0);
+ return `<div class=pagar>💰 PAGAR<b>${f$(m)}</b><button onclick="A.pagar()">Ya le pagué</button></div>
+ <div class=card>${ls.map(l=>`<div class=fila><span>${esc(l.n)} · ${d(l.fecha)}</span><b>${f$(l.limpia)}</b></div>`).join('')}<div class=fila><span>En curso (lotes sin terminar)</span><b>${f$(enc)}</b></div><div class=fila><span>🔧 Caja de gastos varios</span><b>${f$(gv)}</b></div></div>
+ <div class=card><h2>📋 Pagos realizados</h2>${[...S.pagos].sort((a,b)=>b.fecha-a.fecha).map(p=>`<div class=fila><span>${d(p.fecha)} · ${p.lotes.map(l=>esc(l.n)).join(', ')}</span><b>${f$(p.monto)}</b></div>`).join('')||'<p class=vac>Sin pagos todavía.</p>'}</div>
+ <div class=card><h2>🧾 Ventas recientes</h2>${[...S.ventas].sort((a,b)=>b.fecha-a.fecha).slice(0,30).map(v=>`<div class=fila><span>${d(v.fecha)} · ${v.items.map(i=>esc(i.n)+' '+i.kg+'kg').join(', ')}</span><b>${f$(v.total)}</b></div>`).join('')||'<p class=vac>Sin ventas todavía.</p>'}</div>`},
+a:()=>`<div class=card><h2>⚙️ Valores para productos nuevos</h2><label>Margen (%)<input type=number value="${S.cfg.margen}" onchange="A.cfg('margen',this.value)"></label><label>Gastos varios (% del costo)<input type=number value="${S.cfg.gastos}" onchange="A.cfg('gastos',this.value)"></label></div>
+ <div class=card><h2>💾 Respaldo</h2><button onclick="A.exp()">📤 Guardar respaldo (.job)</button><label class="btnl btn2" style="display:block;text-align:center;margin-top:6px">📥 Cargar respaldo<input type=file hidden onchange="A.imp(event)"></label></div>
+ <div class=card><p>${esc(user.email||'')}</p><button onclick="A.salir()">Cerrar sesión</button></div>`};
+
+A.add=()=>{const pid=$('cp').value,kg=parseFloat($('ck').value);if(!(kg>0))return;const en=sum(cart.filter(i=>i.pid==pid),i=>i.kg);
+ if(kg+en>kgDisp(pid)+0.0001){alert('No hay tanto stock de ese producto.');return}
+ const x=cart.find(i=>i.pid==pid);x?x.kg=Math.round((x.kg+kg)*1000)/1000:cart.push({pid,kg});render(true)};
+A.quit=n=>{cart.splice(n,1);render(true)};
+A.vender=()=>{if(!cart.length)return;const its=[];
+ for(const it of cart){const p=prod(it.pid);let kg=it.kg;
+  for(const l of S.lotes.filter(l=>l.pid==p.id&&l.estado=='activo').sort((a,b)=>a.fecha-b.fecha)){if(kg<=0.0001)break;
+   const t=Math.min(kg,l.kgRest),costo=l.costoKg*t,sub=p.precio*t,gas=costo*(p.gastos/100),lim=sub-costo-gas;
+   l.kgRest-=t;l.limpia=(l.limpia||0)+lim;l.gastos=(l.gastos||0)+gas;kg-=t;if(l.kgRest<0.001){l.kgRest=0;l.estado='agotado'}
+   put('lotes',l);its.push({pid:p.id,n:p.nombre,kg:t,precio:p.precio,sub,costo,gas,lim,lote:l.id})}}
+ const v={id:uid(),fecha:Date.now(),items:its,total:sum(its,i=>i.sub),limpia:sum(its,i=>i.lim),gastos:sum(its,i=>i.gas)};put('ventas',v);cart=[];render(true);
+ alert(`✅ Venta ${f$(v.total)}\nGanancia limpia: ${f$(v.limpia)}\nGastos varios: ${f$(v.gastos)}`)};
+A.compra=()=>{const p=prod($('sp').value),kg=parseFloat($('sk').value),c=parseFloat($('sc').value);if(!p||!(kg>0)||!(c>0)){alert('Completá producto, kg y costo total.');return}
+ put('lotes',{id:uid(),pid:p.id,n:p.nombre,fecha:Date.now(),kg,kgRest:kg,costo:c,costoKg:c/kg,limpia:0,gastos:0,estado:'activo',pagado:false});
+ p.costoKg=c/kg;p.precio=Math.round(p.costoKg*(1+p.margen/100));put('productos',p);render(true)};
+A.agot=id=>{const l=S.lotes.find(x=>x.id==id);if(!confirm(`¿Se acabó ${l.n}? Su ganancia limpia ${f$(l.limpia)} pasa a PAGAR.`))return;l.kgRest=0;l.estado='agotado';put('lotes',l);render(true)};
+A.delLote=id=>{if(confirm('¿Borrar este lote? (solo para corregir un error de carga)'))del('lotes',id)};
+A.nuevo=()=>{const n=$('np').value.trim();if(!n)return;put('productos',{id:uid(),nombre:n,margen:S.cfg.margen,gastos:S.cfg.gastos,costoKg:0,precio:0,img:''});render(true)};
+A.ed=(id,k,v)=>{const p=prod(id);if(k=='nombre')p.nombre=v.trim()||p.nombre;else{v=parseFloat(v)||0;p[k]=v;
+ if(k=='costoKg'||k=='margen')p.precio=Math.round(p.costoKg*(1+p.margen/100));
+ if(k=='precio'&&p.costoKg>0)p.margen=Math.round((v/p.costoKg-1)*1000)/10}
+ put('productos',p);render(true)};
+A.delp=id=>{if(confirm('¿Borrar este producto?'))del('productos',id)};
+A.tog=id=>{sel.has(id)?sel.delete(id):sel.add(id)};
+A.img=(id,e)=>{const f=e.target.files[0];if(!f)return;const im=new Image();im.onload=()=>{const s=Math.min(1,800/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=im.width*s;c.height=im.height*s;c.getContext('2d').drawImage(im,0,0,c.width,c.height);const p=prod(id);p.img=c.toDataURL('image/jpeg',.72);put('productos',p);render(true)};im.src=URL.createObjectURL(f)};
+A.lista=()=>{const ps=[...sel].map(prod).filter(Boolean);if(!ps.length){alert('Tildá los productos que querés en la lista.');return}
+ $('imp').innerHTML=ps.map(p=>`<section class=pag><i class=w1>🐟</i><i class=w2>🐠</i><h1>${esc(p.nombre)}</h1><div class=foto>${p.img?`<img src="${p.img}">`:'🐟'}</div><div class=cartel><small>PRECIO</small><b>${f$(p.precio)}</b><span>por kg</span></div></section>`).join('');setTimeout(()=>print(),300)};
+A.pagar=()=>{const ls=S.lotes.filter(l=>l.estado=='agotado'&&!l.pagado),m=sum(ls,l=>l.limpia);if(!ls.length){alert('No hay nada para pagar todavía.');return}
+ if(!confirm(`¿Confirmás que ya le pagaste ${f$(m)}?`))return;
+ put('pagos',{id:uid(),fecha:Date.now(),monto:m,lotes:ls.map(l=>({n:l.n,limpia:l.limpia,fecha:l.fecha}))});ls.forEach(l=>{l.pagado=true;put('lotes',l)});render(true)};
+A.cfg=(k,v)=>{S.cfg[k]=parseFloat(v)||0;setDoc(doc(db,'ajustes','cfg'),S.cfg)};
+A.exp=()=>{const o={v:2,productos:S.productos,lotes:S.lotes,ventas:S.ventas,pagos:S.pagos,cfg:S.cfg},n='pescados_respaldo_'+new Date().toISOString().slice(0,10)+'.job',f=new File([JSON.stringify(o)],n,{type:'application/octet-stream'});
+ if(navigator.canShare&&navigator.canShare({files:[f]})){navigator.share({files:[f]}).catch(()=>{});return}
+ const a=document.createElement('a');a.href=URL.createObjectURL(f);a.download=n;a.click()};
+A.imp=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=async()=>{try{const o=JSON.parse(r.result);if(!Array.isArray(o.productos))throw 0;
+ if(!confirm('Se cargan los datos del respaldo (reemplazan los que tengan el mismo código). ¿Seguir?'))return;
+ const ops=[];C.forEach(c=>(o[c]||[]).forEach(x=>ops.push([c,x])));for(let i=0;i<ops.length;i+=400){const b=writeBatch(db);ops.slice(i,i+400).forEach(([c,x])=>b.set(doc(db,c,x.id),x));await b.commit()}
+ if(o.cfg)setDoc(doc(db,'ajustes','cfg'),o.cfg);alert('✅ Respaldo cargado')}catch(_){alert('El archivo no es un respaldo válido de PESCADOS.')}};r.readAsText(f)};
+A.salir=()=>signOut(auth);
+if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js');
+</script></body></html>
