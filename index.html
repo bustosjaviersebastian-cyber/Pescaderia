@@ -29,8 +29,8 @@ nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:#023047;paddi
 import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import{getAuth,onAuthStateChanged,signInWithEmailAndPassword,signOut}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import{initializeFirestore,persistentLocalCache,persistentMultipleTabManager,collection,doc,setDoc,deleteDoc,onSnapshot,writeBatch}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-// ===== PEGAR ACÁ LA CONFIGURACIÓN DE FIREBASE =====
-const FIREBASE={apiKey:"PEGAR",authDomain:"PEGAR",projectId:"PEGAR",storageBucket:"PEGAR",messagingSenderId:"PEGAR",appId:"PEGAR"};
+// ===== PEGAR ACÁ LA CONFIGURACIÓN DE FIREBASE ====
+const FIREBASE={apiKey:"AIza...",authDomain:"pescados-xxxx.firebaseapp.com",projectId:"pescados-xxxx",storageBucket:"pescados-xxxx.appspot.com",messagingSenderId:"123456",appId:"1:123456:web:abc"};
 // ==================================================
 const fb=initializeApp(FIREBASE),auth=getAuth(fb),db=initializeFirestore(fb,{localCache:persistentLocalCache({tabManager:persistentMultipleTabManager()})});
 const $=id=>document.getElementById(id),A=window.A={};
