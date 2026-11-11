@@ -26,6 +26,10 @@ nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:#023047;paddi
 .mcard{position:absolute;left:0;right:0;bottom:0;top:max(24px,env(safe-area-inset-top));background:#CAF0F8;border-radius:20px 20px 0 0;overflow:auto;padding:14px;max-width:640px;margin:auto}
 .mcard label{font-size:.8rem;font-weight:700;display:block}
 .stk{display:flex;gap:8px;align-items:center}.stk button{width:60px;font-size:1.6rem;padding:6px;margin:0}.stk input{text-align:center;margin:0}
+.tb{width:100%;border-collapse:collapse;font-size:.8rem}.tb th{background:#EAF4FA;text-align:left;padding:8px 3px;font-size:.72rem}.tb td{padding:6px 3px;border-bottom:1px solid #eee;vertical-align:middle}.tb td small{display:block;font-size:.66rem;opacity:.85;margin-top:1px}
+.fo{width:40px;height:40px;border-radius:8px;background:#CAF0F8;display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:1.4rem}.fo img{width:100%;height:100%;object-fit:cover}
+.tb .ag{padding:8px 4px;font-size:.75rem;margin:0 0 4px;background:#2A9D8F}.tb .ag:disabled{background:#aaa}.tb .ed{padding:5px 4px;font-size:.72rem;margin:0;width:100%}
+#cb{position:fixed;left:8px;right:8px;bottom:calc(66px + env(safe-area-inset-bottom));z-index:20;max-width:640px;margin:auto;display:flex;align-items:center;justify-content:space-between;background:#FB8500;color:#fff;border-radius:14px;padding:12px 14px;font-weight:900;box-shadow:0 3px 12px #0005}
 #imp{display:none}
 .pag{position:relative;overflow:hidden;width:210mm;height:297mm;page-break-after:always;display:flex;flex-direction:column;align-items:center;justify-content:space-evenly;background:radial-gradient(circle at 15% 20%,#fff8 0 12mm,#0000 13mm),radial-gradient(circle at 85% 75%,#fff8 0 18mm,#0000 19mm),radial-gradient(circle at 80% 15%,#fff6 0 8mm,#0000 9mm),linear-gradient(180deg,#90E0EF,#CAF0F8 45%,#48CAE4)}
 .pag h1{margin:0;font-size:22mm;text-align:center;color:#023047;text-shadow:0 1mm 0 #fff;padding:0 10mm;z-index:1}
@@ -46,7 +50,7 @@ const fb=initializeApp(FIREBASE),auth=getAuth(fb),db=initializeFirestore(fb,{loc
 const $=id=>document.getElementById(id),A=window.A={};
 const DEF={margen:35,gastos:5,amarillo:30,rojo:60};
 const C=['productos','lotes','ventas','pagos'],S={productos:[],lotes:[],ventas:[],pagos:[],cfg:{...DEF}};
-let user=null,view='v',cart=[],unsub=[],sel=new Set(),msg='',rk={p:'sem',m:'kg'},ped=new Set(),showCompra=false,q='',edId=null;
+let user=null,view='s',cart=[],unsub=[],sel=new Set(),msg='',rk={p:'sem',m:'kg'},ped=new Set(),showCompra=false,q='',edId=null;
 const f$=n=>(n||0).toLocaleString('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:0});
 const d=t=>new Date(t).toLocaleDateString('es-AR'),uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,5);
 const ymd=t=>{const x=new Date(t);return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0')};
@@ -55,6 +59,7 @@ const prod=id=>S.productos.find(p=>p.id==id),put=(c,o)=>{setDoc(doc(db,c,o.id),o
 const kgDisp=id=>S.lotes.filter(l=>l.pid==id&&l.estado=='activo').reduce((a,l)=>a+l.kgRest,0);
 const lotesAct=id=>S.lotes.filter(l=>l.pid==id&&l.estado=='activo'&&l.kgRest>0.001).sort((a,b)=>a.fecha-b.fecha);
 const sum=(a,f)=>a.reduce((x,y)=>x+f(y),0);
+const cartTot=()=>sum(cart,i=>i.kg*((prod(i.pid)||{}).precio||0));
 const dias=t=>Math.floor((Date.now()-t)/864e5),cls=n=>n>=S.cfg.rojo?'rj':n>=S.cfg.amarillo?'am':'vd';
 const cod=n=>'P'+String(n).padStart(3,'0'),num=p=>parseInt(String(p.codigo||'').replace(/\D/g,''))||0;
 const nextCode=()=>cod(Math.max(0,...S.productos.map(num))+1);
@@ -66,32 +71,26 @@ onAuthStateChanged(auth,u=>{user=u;unsub.forEach(f=>f());unsub=[];
  unsub.push(onSnapshot(doc(db,'ajustes','cfg'),s=>{if(s.exists())S.cfg={...DEF,...s.data()};render()},()=>{}))}
  render(true)});
 
-const NAV=[['v','🛒','Vender'],['s','📦','Productos'],['g','🐷','Alcancía'],['r','🏆','Ranking'],['p','🏷️','Precios'],['a','⚙️','Ajustes']];
+const NAV=[['s','🛒','Productos'],['g','🐷','Alcancía'],['r','🏆','Ranking'],['p','🏷️','Precios'],['a','⚙️','Ajustes']];
 function render(force){
  const ae=document.activeElement;if(!force&&ae&&/INPUT|SELECT|TEXTAREA/.test(ae.tagName)&&$('app').contains(ae))return;
  if(!user){$('app').innerHTML=`<header>🐟 PESCADOS 🐟</header><main><div class=card><h2>Ingresar</h2><input id=em type=email placeholder="Correo"><input id=pw type=password placeholder="Contraseña"><button onclick="A.login()">Entrar</button><p class=err>${msg}</p></div></main>`;return}
- $('app').innerHTML=`<header>🐟 PESCADOS 🐟</header><main>${VW[view]()}</main><nav>${NAV.map(n=>`<button class="${view==n[0]?'on':''}" onclick="A.go('${n[0]}')"><span>${n[1]}</span>${n[2]}</button>`).join('')}</nav>`}
+ $('app').innerHTML=`<header>🐟 PESCADOS 🐟</header><main ${view=='s'&&cart.length?'style="padding-bottom:76px"':''}>${VW[view]()}</main>${view=='s'&&cart.length?`<div id=cb onclick="A.carrito()"><span>🛒 ${cart.length} ${cart.length>1?'productos':'producto'}</span><span>${f$(cartTot())} · Ver ›</span></div>`:''}<nav>${NAV.map(n=>`<button class="${view==n[0]?'on':''}" onclick="A.go('${n[0]}')"><span>${n[1]}</span>${n[2]}</button>`).join('')}</nav>`}
 A.go=v=>{view=v;render(true);scrollTo(0,0)};
 A.login=()=>{msg='';signInWithEmailAndPassword(auth,$('em').value.trim(),$('pw').value).catch(()=>{msg='Correo o contraseña incorrectos';render(true)})};
 
 /* ---------- Listado de productos ---------- */
 const LP=()=>{const t=q.trim().toLowerCase(),ps=S.productos.filter(p=>!t||(p.nombre+' '+(p.codigo||'')).toLowerCase().includes(t)).sort((a,b)=>(a.codigo||'').localeCompare(b.codigo||''));
- return ps.map(p=>{const ls=lotesAct(p.id),kg=sum(ls,l=>l.kgRest),u=S.lotes.filter(l=>l.pid==p.id).sort((a,b)=>b.fecha-a.fecha)[0],f=ls[0]?ls[0].fecha:(u?u.fecha:0);
- return `<div class="card ${kg<=0.001?'cero':''}"><div class=fila style="border:0;padding:0"><span><small>${esc(p.codigo||'')}</small><br><b style="font-size:1.1rem">${esc(p.nombre)}</b></span><button class=btnl style="width:auto" onclick="A.edit('${p.id}')">✏️ Editar</button></div>
- <div class=g3 style="margin-top:8px"><div><small>Stock</small><b>${kg.toFixed(2)} kg</b></div><div><small>Costo/kg</small><b>${f$(p.costoKg)}</b></div><div><small>Venta/kg</small><b>${f$(p.precio)}</b></div></div>
- <div class=fecha>${f?`📅 Compra ${d(f)} ${ls[0]?`<span class="dias ${cls(dias(f))}">${dias(f)} días</span>`:'· sin stock'}`:'Sin compras todavía'}</div></div>`}).join('')||'<p class=vac>No hay productos.</p>'};
+ if(!ps.length)return '<p class=vac>No hay productos.</p>';
+ return `<table class=tb><tr><th>Foto</th><th>Cód.</th><th>Producto</th><th>Stock</th><th>Precio</th><th></th></tr>${ps.map(p=>{const ls=lotesAct(p.id),kg=sum(ls,l=>l.kgRest),u=S.lotes.filter(l=>l.pid==p.id).sort((a,b)=>b.fecha-a.fecha)[0],f=ls[0]?ls[0].fecha:(u?u.fecha:0),ok=kg>0.001&&p.precio>0;
+ return `<tr><td><div class=fo>${p.img?`<img src="${p.img}">`:'🐟'}</div></td><td>${esc(p.codigo||'')}</td><td><b>${esc(p.nombre)}</b><small>Costo ${f$(p.costoKg)}</small>${f?`<small>📅 ${d(f)} ${ls[0]?`<span class="dias ${cls(dias(f))}">${dias(f)} d</span>`:''}</small>`:''}</td><td>${kg>0.001?`<b>${+kg.toFixed(2)}</b>`:'<b style="color:#E63946">AGOTADO (0)</b>'}</td><td><b>${f$(p.precio)}</b></td><td><button class="ag" ${ok?'':'disabled'} onclick="A.ag('${p.id}')">🛒 Agregar</button><button class="btnl ed" onclick="A.edit('${p.id}')">✏️ Editar</button></td></tr>`}).join('')}</table>`};
 const LOT=id=>lotesAct(id).map(l=>`<div class=fila><span>📅 <input type=date value="${ymd(l.fecha)}" style="width:auto;padding:6px" onchange="A.lfecha('${l.id}',this.value)"><br><small>${l.kgRest.toFixed(2)} kg · costo ${f$(l.costoKg)}/kg</small></span>${l.kgRest==l.kg?`<button class=x onclick="A.delLoteM('${l.id}')">✕</button>`:''}</div>`).join('')||'<p class=vac>Sin stock.</p>';
 
 const VW={
-v:()=>{const ps=S.productos.filter(p=>p.precio>0&&kgDisp(p.id)>0.001),tot=sum(cart,i=>i.kg*prod(i.pid).precio);
- return `<div class=card><h2>🛒 Carrito</h2>${ps.length?`<select id=cp>${ps.map(p=>`<option value="${p.id}">${esc(p.nombre)} · ${f$(p.precio)}/kg · ${kgDisp(p.id).toFixed(2)} kg</option>`).join('')}</select><input id=ck type=number step=0.01 inputmode=decimal placeholder="Kg a vender"><button onclick="A.add()">Agregar al carrito</button>`:'<p class=vac>Cargá stock y precios para poder vender.</p>'}
- ${cart.map((i,n)=>`<div class=fila><span>${esc(prod(i.pid).nombre)} · ${i.kg} kg</span><b>${f$(i.kg*prod(i.pid).precio)}</b><button class=x onclick="A.quit(${n})">✕</button></div>`).join('')}
- ${cart.length?`<div class=tot>Total ${f$(tot)}</div><button class=ok onclick="A.vender()">✅ Confirmar venta</button>`:''}</div>`},
 s:()=>{const ac=S.lotes.filter(l=>l.estado=='activo'),vc=sum(ac,l=>l.kgRest*l.costoKg),vv=sum(ac,l=>{const p=prod(l.pid);return l.kgRest*(p?p.precio:0)});
- return `<div class=card><h2>📦 Productos</h2><div class=g2 style="text-align:center"><div><small>Stock a costo (capital)</small><br><b>${f$(vc)}</b></div><div><small>Stock a precio de venta</small><br><b>${f$(vv)}</b></div></div></div>
- <div class=card><button onclick="A.tcompra()">${showCompra?'▲ Cerrar carga de compra':'➕ Cargar compra'}</button>${showCompra?`<input id=sn list=dl placeholder="Producto (ej: Merluza)" autocomplete=off oninput="A.prev()"><datalist id=dl>${S.productos.map(p=>`<option value="${esc(p.nombre)}">`).join('')}</datalist><input id=sk type=number step=0.01 inputmode=decimal placeholder="Kg del bulto" oninput="A.prev()"><input id=sc type=number inputmode=decimal placeholder="Precio del bulto ($)" oninput="A.prev()"><div id=prev style="text-align:center;padding:6px 0"></div><button class=ok onclick="A.compra()">Agregar al stock</button>`:''}
- <button class=ok onclick="A.pedido()">📝 Faltantes / Pedido</button></div>
- <input id=bq placeholder="🔍 Buscar por código o nombre" value="${esc(q)}" oninput="A.buscar(this.value)"><div id=lp>${LP()}</div>`},
+ return `<div class=card><div class=g2 style="text-align:center"><div><small>Stock a costo (capital)</small><br><b>${f$(vc)}</b></div><div><small>Stock a precio de venta</small><br><b>${f$(vv)}</b></div></div></div>
+ <div class=card><div class=g2><button onclick="A.tcompra()">${showCompra?'▲ Cerrar':'➕ Cargar compra'}</button><button class=ok onclick="A.pedido()">📝 Faltantes</button></div>${showCompra?`<input id=sn list=dl placeholder="Producto (ej: Merluza)" autocomplete=off oninput="A.prev()"><datalist id=dl>${S.productos.map(p=>`<option value="${esc(p.nombre)}">`).join('')}</datalist><input id=sk type=number step=0.01 inputmode=decimal placeholder="Kg del bulto" oninput="A.prev()"><input id=sc type=number inputmode=decimal placeholder="Precio del bulto ($)" oninput="A.prev()"><div id=prev style="text-align:center;padding:6px 0"></div><button class=ok onclick="A.compra()">Agregar al stock</button>`:''}</div>
+ <input id=bq placeholder="🔍 Buscar por código o nombre" value="${esc(q)}" oninput="A.buscar(this.value)"><div class=card style="padding:4px" id=lp>${LP()}</div>`},
 r:()=>{const t0={sem:7,mes:30,tot:0}[rk.p],vs=S.ventas.filter(v=>!t0||v.fecha>=Date.now()-t0*864e5),m={};
  vs.forEach(v=>v.items.forEach(i=>{const k=i.pid||i.n,o=m[k]=m[k]||{n:(prod(i.pid)||{nombre:i.n}).nombre,kg:0,lim:0};o.kg+=i.kg;o.lim+=i.lim}));
  const ar=Object.values(m).sort((a,b)=>rk.m=='kg'?b.kg-a.kg:b.lim-a.lim),mx=ar[0]?(rk.m=='kg'?ar[0].kg:ar[0].lim)||1:1,med=['🥇','🥈','🥉'];
@@ -110,17 +109,25 @@ a:()=>`<div class=card><h2>⚙️ Valores para productos nuevos</h2><label>Marge
  <div class=card><p>${esc(user.email||'')}</p><button onclick="A.salir()">Cerrar sesión</button></div>`};
 
 /* ---------- Venta ---------- */
-A.add=()=>{const pid=$('cp').value,kg=parseFloat($('ck').value);if(!(kg>0))return;const en=sum(cart.filter(i=>i.pid==pid),i=>i.kg);
- if(kg+en>kgDisp(pid)+0.0001){alert('No hay tanto stock de ese producto.');return}
- const x=cart.find(i=>i.pid==pid);x?x.kg=Math.round((x.kg+kg)*1000)/1000:cart.push({pid,kg});render(true)};
-A.quit=n=>{cart.splice(n,1);render(true)};
+A.ag=id=>{const p=prod(id),kg=kgDisp(id);if(!p||kg<=0.001)return;const en=sum(cart.filter(i=>i.pid==id),i=>i.kg);edId=null;
+ $('mod').innerHTML=`<div class=mbg onclick="A.cerrar()"></div><div class=mcard style="top:auto;max-height:85%"><h2>🛒 ${esc(p.nombre)}</h2><p style="margin:0 0 6px">${f$(p.precio)}/kg · disponible ${+(kg-en).toFixed(2)} kg${en?` (ya en carrito: ${en} kg)`:''}</p><input id=ak type=number step=0.01 inputmode=decimal placeholder="Kg a vender" oninput="A.akp('${id}')" onkeydown="if(event.key=='Enter')A.agOk('${id}')"><div class=chips>${[0.5,1,2,5].map(x=>`<button onclick="A.akset('${id}',${x})">${x} kg</button>`).join('')}</div><div id=akt class=tot></div><button class=ok onclick="A.agOk('${id}')">Agregar al carrito</button><button class=x style="width:100%;padding:12px" onclick="A.cerrar()">Cancelar</button></div>`;
+ $('mod').style.display='block';setTimeout(()=>{const e=$('ak');if(e)e.focus()},100)};
+A.akset=(id,x)=>{$('ak').value=x;A.akp(id)};
+A.akp=id=>{const p=prod(id),kg=parseFloat($('ak').value);$('akt').textContent=kg>0?f$(kg*p.precio):''};
+A.agOk=id=>{const kg=parseFloat($('ak').value);if(!(kg>0))return;const en=sum(cart.filter(i=>i.pid==id),i=>i.kg);
+ if(kg+en>kgDisp(id)+0.0001){alert('No hay tanto stock de ese producto.');return}
+ const x=cart.find(i=>i.pid==id);x?x.kg=Math.round((x.kg+kg)*1000)/1000:cart.push({pid:id,kg});A.cerrar();render(true)};
+A.carrito=()=>{edId=null;if(!cart.length){A.cerrar();return}
+ $('mod').innerHTML=`<div class=mbg onclick="A.cerrar()"></div><div class=mcard style="top:auto;max-height:85%"><div class=fila style="border:0"><h2 style="margin:0">🛒 Carrito</h2><button class=x onclick="A.cerrar()">✕</button></div><div class=card>${cart.map((i,n)=>{const p=prod(i.pid)||{nombre:'?',precio:0};return `<div class=fila><span>${esc(p.nombre)}<br><small>${i.kg} kg × ${f$(p.precio)}</small></span><b>${f$(i.kg*p.precio)}</b><button class=x onclick="A.quit(${n})">✕</button></div>`}).join('')}<div class=tot>Total ${f$(cartTot())}</div></div><button class=ok onclick="A.vender()">✅ Confirmar venta</button><button class=x style="width:100%;padding:12px" onclick="A.vaciarC()">Vaciar carrito</button></div>`;$('mod').style.display='block'};
+A.quit=n=>{cart.splice(n,1);render(true);A.carrito()};
+A.vaciarC=()=>{cart=[];A.cerrar();render(true)};
 A.vender=()=>{if(!cart.length)return;const its=[];
  for(const it of cart){const p=prod(it.pid);let kg=it.kg;
   for(const l of S.lotes.filter(l=>l.pid==p.id&&l.estado=='activo').sort((a,b)=>a.fecha-b.fecha)){if(kg<=0.0001)break;
    const t=Math.min(kg,l.kgRest),costo=l.costoKg*t,sub=p.precio*t,gas=costo*(p.gastos/100),lim=sub-costo-gas;
    l.kgRest-=t;l.limpia=(l.limpia||0)+lim;l.gastos=(l.gastos||0)+gas;kg-=t;if(l.kgRest<0.001){l.kgRest=0;l.estado='agotado';l.pagado=true}
    put('lotes',l);its.push({pid:p.id,n:p.nombre,kg:t,precio:p.precio,sub,costo,gas,lim,lote:l.id})}}
- const v={id:uid(),fecha:Date.now(),items:its,total:sum(its,i=>i.sub),limpia:sum(its,i=>i.lim),gastos:sum(its,i=>i.gas)};put('ventas',v);cart=[];render(true);
+ const v={id:uid(),fecha:Date.now(),items:its,total:sum(its,i=>i.sub),limpia:sum(its,i=>i.lim),gastos:sum(its,i=>i.gas)};put('ventas',v);cart=[];A.cerrar();render(true);
  alert(`✅ Venta ${f$(v.total)}\n🐷 A la alcancía: ${f$(v.limpia)}\nGastos varios: ${f$(v.gastos)}`)};
 
 /* ---------- Compras y productos ---------- */
